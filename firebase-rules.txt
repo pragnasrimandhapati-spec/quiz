@@ -1,0 +1,26 @@
+// Firestore Rules - DEMO/college project version
+// IMPORTANT: For production, use Firebase Admin SDK/custom claims to securely assign admin roles.
+
+rules_version = '2';
+service cloud.firestore {
+  match /databases/{database}/documents {
+    function signedIn() { return request.auth != null; }
+    function isAdmin() { return signedIn() && get(/databases/$(database)/documents/users/$(request.auth.uid)).data.role == 'admin'; }
+
+    match /users/{uid} {
+      allow read: if signedIn() && (request.auth.uid == uid || isAdmin());
+      allow create: if signedIn() && request.auth.uid == uid;
+      allow update: if signedIn() && request.auth.uid == uid;
+    }
+
+    match /quizzes/{quizId} {
+      allow read: if signedIn();
+      allow create, update, delete: if isAdmin();
+    }
+
+    match /results/{resultId} {
+      allow create: if signedIn() && request.resource.data.studentId == request.auth.uid;
+      allow read: if signedIn() && (resource.data.studentId == request.auth.uid || isAdmin());
+    }
+  }
+}
